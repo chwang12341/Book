@@ -661,7 +661,14 @@ df.fillna(method = 'ffill', axis = 1)
 # Pandas的各種用法 - 讀書筆記 - Python Data Science Handbook - Python數據科學 - 多層次結構 - 多重索引 MultiIndex - 筆記#11
 
 
+
+
+
 ## 3.5 章 層次化索引 - Hierarchical Indexing
+
+
+
+
 
 
 ### 前言
@@ -669,8 +676,11 @@ df.fillna(method = 'ffill', axis = 1)
 
 從一開始到現在，我們關注在一維和二維的數據，分別存儲於Pandas的Series和DataFrame中，但很多時候我們需要超過二維來存儲更高維度的數據，也代表用來索引的關鍵字會超過1個或2個
 
-
 雖然Pandas提供了Panel和Panel4D來存儲高維度的數據，但是在實務上更常被使用的方式是層次化索引(或稱多重索引) Hierarchical Indexing 來將多個索引層次的索引關鍵字結合起來成為一個索引，這種方式讓高維度的數據可以用更緊湊的方式呈現我們熟悉的一維Series和二維DataFrame
+
+
+
+
 
 
 + 導入所需的套件
@@ -679,16 +689,21 @@ df.fillna(method = 'ffill', axis = 1)
 ## 導入所需的套件
 import numpy as np
 import pandas as pd
-
-
 ```
+
+
+
+
 
 ### 1. Series中的多重索引 - A Multiply Indexed Series
 
+
+
 + 問題: 使用一維Series如何是好～表示二維數據，實例上我們考慮使用一個序列的數據，每個數據元素點都有一個對應的字符串和數字關鍵字
 
-
 **不優的作法 - The bad way**
+
+
 
 
 + 範例: 假設我們要瞭解城市房屋數在兩個不同時間點的數據，利用我們學過的Pandas工具，可能會想使用簡單的Python元祖(tuple)來當key
@@ -715,10 +730,40 @@ city_house = pd.Series(house, index = index)
 city_house
 ```
 
+**執行結果**
+
+```
+(Hsinchu, 2020)      52457
+(Hsinchu, 2021)      57686
+(Taipei, 2020)      267496
+(Taipei, 2021)      326717
+(Taichung, 2020)    256486
+(Taichung, 2021)    239766
+dtype: int64
+```
+
+
+
+
+
 + 這種方式可以直接於Series中對多個索引進行索引(index)或是切片(slice)
 ```Python
 city_house[('Hsinchu', 2021):('Taichung', 2020)]
 ```
+
+**執行結果**
+
+```
+(Hsinchu, 2021)      57686
+(Taipei, 2020)      267496
+(Taipei, 2021)      326717
+(Taichung, 2020)    256486
+dtype: int64
+```
+
+
+
+
 
 + 遇到的問題: 雖然上述的方式看起來是很方便，但是如果遇到更複雜的問題可能就不好處理了，像是如果我們需要2021年全部的數據，就需要寫一段沒那麼好讀(性能也較低)的程式碼
 
@@ -726,7 +771,21 @@ city_house[('Hsinchu', 2021):('Taichung', 2020)]
 city_house[[i for i in city_house.index if i[1] == 2021]]
 ```
 
+**執行結果**
+
+```
+(Hsinchu, 2021)      57686
+(Taipei, 2021)      326717
+(Taichung, 2021)    239766
+dtype: int64
+```
+
+
+
+
+
 + 結果: 結果是正確的，但是相較於我們喜愛用的Pandas切片語句，程式碼很不易讀(可能在處理大數據上效能也不好)
+
 
 
 **更好的方法: Pandas的多重索引 - The Better Way: Pandas MultiIndex**
@@ -739,8 +798,23 @@ city_house[[i for i in city_house.index if i[1] == 2021]]
 index = pd.MultiIndex.from_tuples(index)
 
 index
+```
+**執行結果**
 
 ```
+MultiIndex([( 'Hsinchu', 2020),
+            ( 'Hsinchu', 2021),
+            (  'Taipei', 2020),
+            (  'Taipei', 2021),
+            ('Taichung', 2020),
+            ('Taichung', 2021)],
+           )
+```
+
+
+
+
+
 + 注意: MultiIndex包含多重層級的索引，像是我們例子中的多重層級索引就是城市名稱和年份，也具有多個標籤對應每個數據點
 
 
@@ -750,8 +824,23 @@ index
 city_house = city_house.reindex(index)
 
 city_house
+```
+
+**執行結果**
 
 ```
+Hsinchu   2020     52457
+          2021     57686
+Taipei    2020    267496
+          2021    326717
+Taichung  2020    256486
+          2021    239766
+dtype: int64
+```
+
+
+
+
 
 + 結果: 結果中Series的前兩列為多重索引的值，最後一列為數據值，第一列有一些數據消失了，是因為在多重索引呈現中，缺失的索引值與它前面的索引值相同
 
@@ -761,20 +850,40 @@ city_house
 
 ```Python
 ## 檢視2021年的數據
-print(city_house:, 2021[)
+print(city_house[:, 2021])
 
 print()
 
 ## 檢視HsinChu底下的所有數據
 print(city_house['Hsinchu', :])
+```
 
+**執行結果**
 
+```
+Hsinchu      57686
+Taipei      326717
+Taichung    239766
+dtype: int64
+
+2020    52457
+2021    57686
+dtype: int64
 ```
 
 + 結果: 執行後變成了一個單一索引的數組，而且是只帶我們需要的索引
 
 
+
+
+
+
+
 ### 2. 多重索引當成額外的維度 - MultiIndex as extra dimention
+
+
+
+
 
 上例中大家可能會注意到我們可以簡單地將數據存成一個DataFrame，城市名稱為行索引，時間(年)為列索引，而Pandas當然也有內建的機制來達到等同的效果 - unstack()
 
@@ -789,13 +898,36 @@ house_df = city_house.unstack()
 house_df
 ```
 
+**執行結果**
+
+![image_a](images\image_a.PNG)
+
+
+
+
+
 
 + stack(): 提供了unstack的反向操作
 ```Python
 ## 轉換回Series
 house_df.stack()
+```
+
+**執行結果**
 
 ```
+Hsinchu   2020     52457
+          2021     57686
+Taichung  2020    256486
+          2021    239766
+Taipei    2020    267496
+          2021    326717
+dtype: int64
+```
+
+
+
+
 
 **疑惑: 到底為什麼我們需要使用這種層次化索引?**
 
@@ -816,8 +948,15 @@ house_df = pd.DataFrame({
 })
 
 house_df
-
 ```
+
+**執行結果**
+
+![image_b](images\image_b.PNG)
+
+
+
+
 
 + Pandas的ufuncs功能當然也可以使用，這邊我們計算空屋的比例
 
@@ -829,8 +968,17 @@ house_empty_rate = house_df['house_empty'] / house_df['house_total']
 house_empty_rate.unstack()
 ```
 
+**執行結果**
+
+![image_c](images\image_c.PNG)
+
+
+
+
 
 ### 3. 創建多重索引的方法  - Methods of MultiIndex Creation
+
+
 
 + 第一種方式: 在Series或DataFrame的index參數中傳入一個多重列表
 
@@ -841,8 +989,15 @@ df = pd.DataFrame(np.random.rand(4, 2),
         columns = ['A', 'B']
         )
 df
-
 ```
+
+**執行結果**
+
+![image_d](images\image_d.PNG)
+
+
+
+
 
 + 這樣構建MultiIndex的工作會在背後自動完成
 
@@ -861,20 +1016,45 @@ data = {
 }
 
 pd.Series(data)
+```
+
+**執行結果**
 
 ```
+Hsinchu   2020     52437
+          2021     57668
+Taipei    2020    284327
+          2021    346517
+Taichung  2020     52897
+          2021    297982
+dtype: int64
+```
+
+
+
 
 
 
 
 #### 顯式的MultiIndex構造器 - Explicit MultiIndex Constructors
 
+
+
 + 第三種方式: 使用pd.MultiIndex的構造器，像是可以使用多重列表來創建和前面一樣的MultiIndex
 
 ```Python
 ## array - 構建多重索引
-pd.MultiIndex.from_arrays([['x', 'x', 'y', 'y'], [1, 2, 1, 2])
+pd.MultiIndex.from_arrays([['x', 'x', 'y', 'y'], [1, 2, 1, 2]])
+```
 
+**執行結果**
+
+```
+MultiIndex([('x', 1),
+            ('x', 2),
+            ('y', 1),
+            ('y', 2)],
+           )
 ```
 
 
@@ -883,7 +1063,16 @@ pd.MultiIndex.from_arrays([['x', 'x', 'y', 'y'], [1, 2, 1, 2])
 ```Python
 ## tuple - 構建多重索引
 pd.MultiIndex.from_tuples([('x', 1), ('x', 2), ('y', 1), ('y', 2)])
+```
 
+**執行結果**
+
+```
+MultiIndex([('x', 1),
+            ('x', 2),
+            ('y', 1),
+            ('y', 2)],
+           )
 ```
 
 
@@ -892,7 +1081,18 @@ pd.MultiIndex.from_tuples([('x', 1), ('x', 2), ('y', 1), ('y', 2)])
 ```Python
 ## Cartesian product - 構建多重索引
 pd.MultiIndex.from_product([['x', 'y'], [1, 2, 3]])
+```
 
+**執行結果**
+
+```
+MultiIndex([('x', 1),
+            ('x', 2),
+            ('x', 3),
+            ('y', 1),
+            ('y', 2),
+            ('y', 3)],
+           )
 ```
 
 + 第六種方式: 直接使用MultiIndex來構建，需要傳入levels(多重列表每個層次中的索引值)參數和 codes (多重列表數據點的標籤值)
@@ -900,10 +1100,29 @@ pd.MultiIndex.from_product([['x', 'y'], [1, 2, 3]])
 ## MultiIndex - levels和codes構建多重索引
 pd.MultiIndex(levels = [['x', 'y', 'z'], [1, 2]],
     codes = [[0, 0, 1, 1, 2, 2], [0, 1, 0, 1, 0, 1]])
-
 ```
 
+**執行結果**
+
+```
+MultiIndex([('x', 1),
+            ('x', 2),
+            ('y', 1),
+            ('y', 2),
+            ('z', 1),
+            ('z', 2)],
+           )
+```
+
+
+
+
+
 創建Series或DataFrame構造器時，上述構建的這些對象都能當成index參數傳遞，或是使用reindex的方法提供給Series或DataFrame進行重新索引
+
+
+
+
 
 #### 多重索引的層次名稱 - MultiIndex Level Names
 
@@ -914,10 +1133,25 @@ pd.MultiIndex(levels = [['x', 'y', 'z'], [1, 2]],
 city_house.index.names = ['City', 'Year']
 
 city_house
+```
 
+**執行結果**
+
+```
+City      Year
+Hsinchu   2020     52457
+          2021     57686
+Taipei    2020    267496
+          2021    326717
+Taichung  2020    256486
+          2021    239766
+dtype: int64
 ```
 
 + 筆記: 這樣的方式可以在複雜的數據集中，讓不同的索引值保有它原本的意義
+
+
+
 
 
 #### 列的多重索引 - MultiIndex For Columns
@@ -928,9 +1162,9 @@ city_house
 ```Python
 ## 構建行和列的多重索引
 index = pd.MultiIndex.from_product([[2020, 2021], [1, 2]],
-                              names = ['year', 'visit')
+                              names = ['year', 'visit'])
                               
-columns = pd.MultiIndex.fro_product([['Ken', 'Jen', 'Cathy']], 
+columns = pd.MultiIndex.from_product([['Ken', 'Jen', 'Cathy'], ['HR', 'Temp']], 
                            names = ['subject', 'type']
          )
          
@@ -942,10 +1176,18 @@ data[:, ::2] *=10
 data+=40
 
 ## 構建DataFrame
-hospital_data = pd.DataFrame(data, inedx = index, columns = columns)
+hospital_data = pd.DataFrame(data, index = index, columns = columns)
 
 hospital_data
 ```
+
+**執行結果**
+
+![image_e](images\image_e.PNG)
+
+
+
+
 
 
 + 處理多維度的數據集時，MultiIndex對行和列來說都是非常方便的，上面為一個四維度的數據集，四個維度分別為目標(受試者)、量測類型、年份和訪問編號，有了這樣多重索引的DataFrame後，可以使用目標的名稱來方便地獲取此受試者的所有量測數據
@@ -953,13 +1195,25 @@ hospital_data
 ```Python
 ## 獲取Ken的數據
 hospital_data['Ken']
-
 ```
+
+**執行結果**
+
+![image_f](images\image_f.PNG)
+
+
+
+
+
+
 
 ### 4. 在MultiIndex上索引和切片 - Indexing And Slicing A MultiIndex
 
-
 #### Series多重索引 - Multiply Indexed Series
+
+
+
+
 
 
 + 上面的例子中房屋的多重索引Series
@@ -990,10 +1244,21 @@ index = pd.MultiIndex.from_tuples(index)
 city_house = city_house.reindex(index)
 
 city_house
+```
 
-
+**執行結果**
 
 ```
+Hsinchu   2020     52457
+          2021     57686
+Taipei    2020    267496
+          2021    326717
+Taichung  2020    256486
+          2021    239766
+dtype: int64
+```
+
+
 
 
 + 使用多重索引值獲取單個元素值
@@ -1001,8 +1266,15 @@ city_house
 ```Python
 ## 檢索Taipei在2020的房屋數
 city_house['Taipei', 2020]
+```
+
+**執行結果**
 
 ```
+267496
+```
+
+
 
 
 + MultiIndex也支援部分索引，就是只索引其中一層，結果會是另一個Series但會比原本少掉一層
@@ -1010,18 +1282,33 @@ city_house['Taipei', 2020]
 ```Python
 ## 檢索Taichung的數據
 city_house['Taichung']
+```
+
+**執行結果**
 
 ```
+2020    256486
+2021    239766
+dtype: int64
+```
+
+
 
 + 只要MultiIndex是排序好的，就可以使用部分切片
 
 ```Python
 ## 檢索Hsinchu到Taipei的數據
 city_house.loc['Hsinchu':'Taipei']
-
 ```
 
+**執行結果: 會報錯 **
+
+
+
 **重要筆記:** 由於我們範例中的多重索引並沒有排好序，Taipei跟Taichung比字母順序，前三個一樣而第四個c應該要在p前面，所以會報錯喔!!
+
+
+
 
 
 **解決方法:** 重新排序一下即可
@@ -1030,9 +1317,8 @@ city_house.loc['Hsinchu':'Taipei']
 ## 索引
 index = [
     ('Hsinchu', 2020), ('Hsinchu', 2021),
-    ('Taichung', 2020), ('Taichung',
-    ('Taipei', 2020), ('Taipei', 2021),
-]
+    ('Taichung', 2020), ('Taichung',2021),
+    ('Taipei', 2020), ('Taipei', 2021)]
 
 
 ## 數據
@@ -1054,18 +1340,37 @@ city_house = city_house.reindex(index)
 
 ## 檢索Taichung到Taipei的數據
 city_house['Taichung':'Taipei']
+```
 
-
+**執行結果**
 
 ```
+Taichung  2020    256486
+          2021    239766
+Taipei    2020    267496
+          2021    326717
+dtype: int64
+```
+
+
 
 + 在有排好序的索引情況下，部分索引也能夠用在比較低層次的索引上，只要在第一個索引上傳入一個空的切片就可以了
 
 ```Python
 ## 查看2020年的資料
 city_house[:, 2020]
+```
+
+**執行結果**
 
 ```
+Hsinchu      52457
+Taichung    256486
+Taipei      267496
+dtype: int64
+```
+
+
 
 
 + 也支援其它類型的索引和選擇，像是使用布林遮罩(Mask)進行檢索
@@ -1073,19 +1378,42 @@ city_house[:, 2020]
 ```Python
 ## 檢索房屋數大於26萬的數據
 city_house[city_house > 260000]
+```
+
+**執行結果**
 
 ```
+Taipei  2020    267496
+        2021    326717
+dtype: int64
+```
+
+
 
 + 使用高級索引(Fancy Indexing)進行檢索工作
 
 ```Python
 ## 檢索Hsinchu和Taipei的數據
-city_house[['Hsinchu', Taipei]]
+city_house[['Hsinchu', 'Taipei']]
+```
 
+**執行結果**
+
+```
+Hsinchu  2020     52457
+         2021     57686
+Taipei   2020    267496
+         2021    326717
+dtype: int64
 ```
 
 
+
+
+
 #### DataFrame多重索引 - Multiply Indexed DataFrame
+
+
 
 + 前面的醫院DataFrame數據集
 
@@ -1093,34 +1421,79 @@ city_house[['Hsinchu', Taipei]]
 hospital_data
 ```
 
+**執行結果**
+
+![image_g](images\image_g.PNG)
+
+
+
+
+
 + **重要觀念:** DataFrame中主要的索引是列，可以透過和上面多重索引Series一樣的方法應用到DataFrame的列上，像是透過簡單的操作獲取Ken的心律數據
 
 ```Python
 ## 查看Ken的心律指數
 hospital_data['Ken', 'HR']
+```
+
+**執行結果**
 
 ```
+year  visit
+2020  1        36.5
+      2        56.2
+2021  1        53.8
+      2        37.8
+Name: (Ken, HR), dtype: float64
+```
+
+
+
+
 
 + 如單一索引的方式，我們一樣能使用loc、iloc索引符
 ```Python
 ## 行和列各呈現前兩筆數據
 hospital_data.iloc[:2, :2]
-
 ```
+
+**執行結果**
+
+![image_h](images\image_h.PNG)
+
+
 
 + loc、iloc索引符號提供了一個底層二維數據的數組視圖，而且在loc或iloc中每個獨立的索引都能傳入一個多重索引的元祖來指定哪一層，像是:
 
 ```Python
 ## 獲取Jen的心律數據
 hospital_data.loc[:, ('Jen', 'HR')]
+```
+
+**執行結果**
 
 ```
+year  visit
+2020  1        41.2
+      2        54.9
+2021  1        29.0
+      2        44.1
+Name: (Jen, HR), dtype: float64
+```
+
+
+
+
 
 + 使用這樣的索引符號並沒有很方便，像是如果在元祖中使用切片會報一個語法錯誤
 
 ```Python
 hospital_data.loc[(:, 1), (:, 'HR')]
 ```
+
+**執行結果: 會報錯**
+
+
 
 **解決方法**
 
@@ -1130,12 +1503,22 @@ hospital_data.loc[(:, 1), (:, 'HR')]
 ```Python
 idx = pd.IndexSlice
 ## 檢索每個人每一年的第一筆心律數據
-hospital_data.iloc[idx[:, 1], idx[:, 'HR']]
-
-
+hospital_data.loc[idx[:, 1], idx[:, 'HR']]
 ```
 
+**執行結果**
+
+![image_i](images\image_i.PNG)
+
+
+
+
+
+
+
 ### 5. 重新排列多重索引 - Rearranging Multi-Indices
+
+
 
 + 使用多重索引數據的關鍵在瞭解如何有效地轉換數據
 + Pandas提供了一些操作去保留這些數據中的資訊，並根據不同目的運算操作來重新排列數據，像是前面有介紹到的stack和unstack，當然還有更多接下來會探討
@@ -1145,20 +1528,25 @@ hospital_data.iloc[idx[:, 1], idx[:, 'HR']]
 #### 有序和無序的索引 - Sorted And Unsorted Indices
 
 
+
 **重要筆記:** 索引分成有序和無序索引，無序索引會讓許多MultiIndex的切片操作報錯
+
+
 
 
 + 創建一個多重索引，但是索引並沒有自然排序
 
 ```Python
 ## 構建多重索引
-index = pd.MultiIndex.from_product()
-[['a', 'c', 'b', 'd'], [1, 2]]
+index = pd.MultiIndex.from_product(
+[['a', 'c', 'b', 'd'], [1, 2]])
 ## 構建多重索引的Series
 data = pd.Series(np.random.rand(8), index = index)
 ## 添加索引標籤名稱
 data.index.names = ['char', 'float']
 ```
+
+
 
 
 + 對Series進行切片，將會報錯
@@ -1168,14 +1556,23 @@ data.index.names = ['char', 'float']
 try:
     data['a':'d']
 except KeyError as e:
-    pritn(type(e))
+    print(type(e))
     print('Error Message: ', e)
-    
-
-
 ```
 
+**執行結果**
+
+```
+<class 'pandas.errors.UnsortedIndexError'>
+Error Message:  'Key length (1) was greater than MultiIndex lexsort depth (0)'
+```
+
+
+
 + 錯誤訊息: 這條錯誤訊息就是因為MultiIndex沒有排序導致的結果，在很多理由下，當對MultiIndex進行部分切片和其它類似的操作時，都會需要索引是有順序的(或稱自然排序)
+
+
+
 
 
 **解決方法**
@@ -1191,18 +1588,56 @@ Pandas提供了對索引進行排序的方法，像是:
 data = data.sort_index()
 
 data
+```
+
+**執行結果**
 
 ```
+char  float
+a     1        0.578024
+      2        0.855234
+b     1        0.894249
+      2        0.005984
+c     1        0.790318
+      2        0.471692
+d     1        0.857639
+      2        0.955646
+dtype: float64
+```
+
+
+
+
 
 + 索引排序好後，切片(slice)就可以正確完成了
 
 ```Python
 ## 切片操作
 data['a':'d']
-
 ```
 
+**執行結果**
+
+```
+char  float
+a     1        0.578024
+      2        0.855234
+b     1        0.894249
+      2        0.005984
+c     1        0.790318
+      2        0.471692
+d     1        0.857639
+      2        0.955646
+dtype: float64
+```
+
+
+
+
+
 #### 索引的堆疊和拆分 - Stacking And Unstacking Indices
+
+
 
 + unstack(): 將一個堆疊的多重索引數據集拆分成一個二維形式，並且使用level參數指定使用哪一層進行拆分
 
@@ -1211,24 +1646,55 @@ print(city_house)
 
 ## 根據城市名稱轉換成二維形式
 city_house.unstack(level = 0)
-
 ```
+
+**執行結果**
+
+![image_j](images\image_j.PNG)
+
+
+
+
 
 ```Python
 ## 根據年份轉換成二維形式
 city_house.unstack(level = 1)
-
 ```
+
+**執行結果**
+
+![image_k](images\image_k.PNG)
+
+
+
+
 
 + stack(): 堆疊數據集
 
 ```Python
 ## 堆疊數據
 city_house.unstack().stack()
-
 ```
 
+**執行結果**
+
+```
+Hsinchu   2020     52457
+          2021     57686
+Taichung  2020    256486
+          2021    239766
+Taipei    2020    267496
+          2021    326717
+dtype: int64
+```
+
+
+
 #### 設置和重新設置索引 - Index Setting And Reseting
+
+
+
+
 
 + 說明: 將索引標籤轉為列，透過reset_index方法完成
 
@@ -1237,23 +1703,34 @@ city_house.unstack().stack()
 
 ```Python
 ## 增加索引標籤
-city_houe.index.names = ['city', 'year']
+city_house.index.names = ['city', 'year']
 
 ## 將索引標籤轉為列數據
 city_house_flat = city_house.reset_index(name = 'house')
 
 city_house_flat
-
-
 ```
+
+**執行結果**
+
+![image_l](images\image_l.PNG)
+
+
+
+
 
 + 在處理真實世界的數據時，通常會看到的數據形式像上面那樣，因此在列當中構建一個MultiIndex很有用，可以透過於Datframe中使用set_index來達成，結果就會返回一個多重索引的DataFrame
 
 ```Python
 ## 構建MultiIndex的DataFrame
-city_house_flat.se_index(['city', 'year'])
-
+city_house_flat.set_index(['city', 'year'])
 ```
+
+**執行結果**
+
+![image_m](images\image_m.PNG)
+
+
 
 
 + **重要性: 作者在實務上的經驗覺得這樣重新索引的方式是很有用的**
@@ -1261,16 +1738,35 @@ city_house_flat.se_index(['city', 'year'])
 
 
 
+
+
+
+
+
 ### 6. 多重索引的數據聚合 - Data Aggregations On Multi-Inndices
 
+
+
+
+
 + Pandas內建的數據聚合方法，像是mean()、max()、mn()和sum()，用在層次化索引的數據上。可以透過設定level參數來控制數據根據哪個層次進行運算
+
+
 
 
 + 醫院數據集
 
 ```Python
-hosipital_data
+hospital_data
 ```
+
+**執行結果**
+
+![image_n](images\image_n.PNG)
+
+
+
+
 
 + 我們希望瞭解不同年份的平均測量值，就可以透過設置level參數來指定需要進行聚合的標籤
 
@@ -1279,8 +1775,15 @@ hosipital_data
 data_mean = hospital_data.mean(level = 'year')
 
 data_mean
-
 ```
+
+**執行結果**
+
+![image_o](images\image_o.PNG)
+
+
+
+
 
 
 + axis參數: 透過設定此參數，可以指定在列或行上沿著指定的層次level進行聚合
@@ -1288,689 +1791,38 @@ data_mean
 ```Python
 ## 根據測量種類沿著列計算平均
 data_mean.mean(axis = 1, level = 'type')
-
 ```
+
+**執行結果**
+
+![image_p](images\image_p.PNG)
+
+
+
+
+
+
 
 很少程式碼，就已經能夠運算獲得所有受試者每年多次進行測試取樣的平均心律和溫度，此語法實際上是GroupBy函數的簡寫，會在之後的章節進行探討
 
 
+
+
+
 ### 補充: Panel數據 - Aside: Panel Data
 
+
+
+
+
 還有一些數據結構這章節沒有探討到，像是pd.Panel和pd,Panel4D對象(object)，這兩者是對應於一維Series和二維的DataFrame相應的三維和四維的通用數據結構，熟悉Series和DataFrame的操作，Panel和Panel4D使用起來就會很直觀，而loc和iloc索引符號操作也可以直接在高維結構中使用
+
+
+
+
 
 
 **作者不特別介紹Panel的原因**
 
 + 因為作者認為在大部分的下多重索引會更有用，在高維度的數據概念上也顯得比較簡單
 + Panel 數據從基本上來看為密集數據，而多重索引則為稀疏矩陣，隨著維度增加使用密集數據方式表示數據是非常低效的，但對於一些特殊的應用狀況，這樣的結構是很有用的
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
