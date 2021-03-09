@@ -1692,3 +1692,415 @@ ipdb>
 
 
 ipdbb 的官方文檔：https//[github.com/gotcha/ipdb](http://github.com/gotcha/ipdb?fbclid=IwAR2kRnEfpYNLc3C0eNp-3_kAo4Z9jOgxsXB9b_wocIPeOp4REMKS_1_eXZk)
+
+
+
+
+
+
+
+# IPython各種用法 - 讀書筆記 - Python Data Science Handbook - Python數據科學 - 寫程式非常重要的性能測算與計時 - IPython的相關網路資源與書籍 - 筆記#3 
+
+
+
+## 1.7章 程式性能的測算與計時 
+
+
+
+### 1.IPython中的各種計算性能方法 
+
+
+
++ %time: 測量單個語句的執行時間 
++ %timeit: 重複測量單個語句的執行時間，並計算平均時間，來取得更準確的執行時間結果 
++ %prun: 使用性能計算工具與程式碼一起執行 
++ %lprun: 使用單個語句執行的性能計算工具與程式碼一起運行 
++ %memit: 計算單個語句佔用的內存（Memory）空間 
++ %mprun: 使用單個語句執行的內存（Memory）計算工具與程式碼一起執行
+
+
+
+### 2. %time & %timeit 程式執行計時工具
+
+
+
+| 魔術指令 | 優點                                                         | 缺點                                                         |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| %time    | 1.適合對於執行時間較長的程式 2.不進行重複執行，所以特定狀況下，像是對列表（list）進行排序時，就非常適合使用 | 較不準確，因為只執行一次                                     |
+| %timeit  | 1.適合對於執行時間較短的程式2.時間準確（因為重複執行很多次後取平均值） | 有些情況下，重複執行造成時間計算錯誤，像是對列表（list）進行排序 |
+
+
+
+#### %timeit 
+
+```Python
+%timeit sum(range(600))
+```
+
+**執行結果**
+
+```
+7.35 µs ± 38.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+```
+
+
+
+ 補充說明：由於上面的例子執行速度相當快，所以%timeit會自動重複運行很多回合，但如果換成一個執行較慢的計算，%timeit會自動減少回合數，如下例子  
+
+```Python
+%%timeit
+
+total = 0
+for i in range(6000):
+    for k in range(6000):
+        total += i * k
+print(total)
+```
+
+**執行結果**
+
+```
+323892009000000
+323892009000000
+323892009000000
+323892009000000
+323892009000000
+323892009000000
+323892009000000
+323892009000000
+2.73 s ± 212 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+
+
+狀況：如果遇到列表進行排序操作時，重複執行的結果會誤導我們，因為對一個已經排好序的列表進行排序是非常快的，所以在第一次執行完成後，後面重複進行測量的數據都是錯誤的，時間會不對（會過快）
+
+```Python
+import random
+L = [random.random() for i in range(1000000)]
+%timeit L.sort()
+```
+
+**執行結果**
+
+```
+21.9 ms ± 278 µs per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```
+
+
+
+
+
+#### %time
+
+
+
+ 範例一：計算還沒排序的列表 
+
+```Python
+import random
+L = [random.random() for i in range(1000000)]
+print('Sorting an Unsorting list(L)')
+%time L.sort()
+```
+
+**執行結果**
+
+```
+Sorting an Unsorting list(L)
+Wall time: 230 ms
+```
+
+
+
+範例二：接著上面執行計算已經排好序的列表 
+
+```Python
+print('Sorting an Alreaddy Sorted list(L)')
+%time L.sort()
+```
+
+**執行結果**
+
+```
+Sorting an Alreaddy Sorted list(L)
+Wall time: 22.7 ms
+```
+
+
+
+可以明顯看出時間差異！！所以非常不適合重複執行！！ 
+
+
+
+
+
+#### 計時 - %timeit為什麼通常都比%time的執行時間快？
+
+ 
+
+%timeit會有一種額外的機制，來防止系統調用（System calls）影響程式執行的時間結果，像是它會防止系統清理掉不再使用的Python物件（又稱垃圾收集），才不會讓這樣的狀況影響執行的時間
+
+
+
+
+
+#### % 只能執行一行程式碼，%%就可以執行一整段程式碼  
+
+```Python
+%%time
+total = 0
+for i in range(6000):
+    for k in range(6000):
+        total += i * k
+        
+print(total)
+```
+
+**執行結果**
+
+```
+323892009000000
+Wall time: 5.01 s
+```
+
+
+
+
+
+### 3. %prun整個Python檔的性能測算
+
+
+
+舉例：先自行定義一個函數，然後測算它的性能 
+
+```IPython
+In [1]: def sum_list(N):
+   ...:     total = 0
+   ...:     for i in range(5):
+   ...:         L = [j ^ (j >> i) for j in range(N)]
+   ...:     return total
+```
+
+
+
+
+
+
+
+計算性能%prun
+
+```IPython
+In [2]: %prun sum_list(10000000)
+         9 function calls in 6.178 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        5    5.708    1.142    5.708    1.142 <ipython-input-1-9b46611eb043>:4(<listcomp>)
+        1    0.355    0.355    6.063    6.063 <ipython-input-1-9b46611eb043>:1(sum_list)
+        1    0.115    0.115    6.178    6.178 <string>:1(<module>)
+        1    0.000    0.000    6.178    6.178 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+```
+
+
+
+
+
+產出的結果表格，顯示每個函數調用的執行時間排序（從大到小），當然從我們的範例中，因為只有執行一個函數，所以耗時最長的就是sum_list 
+
+
+
+使用%prun就能看出程式在哪耗時最久，也就能知道要從哪裡著手了
+
+
+
+
+
+### 4. %lprun 一行一行的執行程式碼去測試性能 
+
+
+
+安裝第三方套件到Python中 
+
+```
+pip install line_profiler 
+```
+
+
+
+再從IPython中載入套件 
+
+```
+%load_ext line_profiler 
+```
+
+
+
+
+
+執行%lprun來計算函數的逐條程式性能 
+
+```Python
+%lprun -f sum_list(5000) 
+```
+
+
+
+
+
+
+
+書本說從結果可以看出，%lprun會幫我們一行一行計算程式性能，單位是毫秒，讓我們知道哪一行執行時間最久，就能根據這個資訊優化哪行程式 
+
+
+
+這邊我在安裝第三方套件的時候一直報錯，所以沒辦法親自試試，大家可以自行使用看看
+
+
+
+### 5. %memit & %mprun 計算內存（Memory）使用量 
+
+
+
+安裝第三方套件到Python中 
+
+```
+pip install memory_profiler
+```
+
+
+
+再從IPython載入套件 
+
+```
+%load_ext memory_profiler 
+```
+
+
+
+
+
+#### %memit 整個程式的內存空間（Memory Space）使用量 
+
+
+
+執行%memit來計算函數的逐條程式性能 
+
+```IPython
+In [1]: %load_ext memory_profiler
+
+In [2]: def sum_list(N):
+   ...:    ...:     total = 0
+   ...:    ...:     for i in range(5):
+   ...:    ...:         L = [j ^ (j >> i) for j in range(N)]
+   ...:    ...:     return total
+   ...:
+
+In [3]: %memit sum_list(6000)
+peak memory: 50.06 MiB, increment: 0.51 MiB
+```
+
+結果：從peak memory可以看出這個程式用了多少的內存（Memory）空間
+
+
+
+
+
+#### %mprun - 逐行程式檢視內存（Memory）空間的使用量 
+
+
+
++ 限制：它只能在獨立的模塊（Modules）上使用，不能應用在notebook本身，簡單來說，它要執行整個外部的Python檔 
+
+
+
++ **使用%%file，來創建一個Python檔，如果遇到Permission denied，表示權限不夠喔，可以建議改用Anaconda Powershell Prompt 或是自行用別的編譯器來創建Python檔**  
+
+```IPython
+In [3]: %memit sum_list(6000)
+peak memory: 50.06 MiB, increment: 0.51 MiB
+
+In [4]: %%file mprun_demo_example.py
+   ...: def sum_lists(N):
+   ...:     total = 0
+   ...:     for i in range(6):
+   ...:         L = [j ^ (j >> i) for j in range(N)]
+   ...:         total += sum(L)
+   ...:         del L
+   ...:     return toal
+   ...:
+Writing mprun_demo_example.py
+```
+
+
+
+
+
++ 導入模塊，也就是導入外部Python檔（前面所建立的），並使用內存空間（Memory Space）計算工具 - %mprun，來進行逐行程式碼計算 
+
+```IPython
+In [5]: from mprun_demo_example import sum_lists
+
+In [6]: %mprun -f sum_lists sum_lists(10000000)
+```
+
+
+
+**執行結果**
+
+```
+Line #    Mem usage    Increment  Occurences   Line Contents
+============================================================
+     1     51.3 MiB     51.3 MiB           1   def sum_lists(N):
+     2     51.3 MiB      0.0 MiB           1       total = 0
+     3     51.3 MiB      0.0 MiB           2       for i in range(6):
+     4    359.6 MiB -75619584.5 MiB    17985287           L = [j ^ (j >> i) for j in range(N)]
+     5    127.6 MiB      0.0 MiB           1           total += sum(L)
+     6     51.3 MiB    -76.3 MiB           1           del L
+     7                                             return toal
+*** KeyboardInterrupt exception caught in code being profiled.
+```
+
+
+
++ Increment 表示內存空間（Memory Space）是如何變化的，創建L串列，與最後刪除L串列，大家可以看出內存的佔用與釋放變化
+
+
+
+
+
+## 1.8章 IPython網路資源與相關數據推薦 
+
+
+
+
+
+### 1. 網路資源 
+
+
+
+| 網站                                       | 說明                                                         | 連結                                                         |
+| ------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| The IPython website                        | 文檔、例子、教學和很多樣的其他資源                           | [https://ipython.org/](https://l.facebook.com/l.php?u=https%3A%2F%2Fipython.org%2F%3Ffbclid%3DIwAR1RivHSM8fnLtY6fpeet8nvMJ6bh4bL3bT0fyzAJ0C4lgihd12PAVZ9glo&h=AT3c3VoHrLCpkv9N8Mn85Y2oqNWdHWhxwA2y7SWufd3-MbO1OKIafCfCh5b7naY-60ijqQYS8umIB0x2P5grCxlSLX0T7iqulZr3Tno-4FQeaPRXCPecDFcfhbJ-Y07xUV4Xew) |
+| The nbviewer website                       | 網站上展示了網路上的IPython notebook的資源文件，並在首頁上展示了一些notebooks的例子，這樣我們可以看到其他人是如何使用IPython的 | [https://nbviewer.jupyter.org/](https://l.facebook.com/l.php?u=https%3A%2F%2Fnbviewer.jupyter.org%2F%3Ffbclid%3DIwAR3s1nZgctgaPmGL9sgiFBcqBrt99btgLS_Qqwr1lyStVvUW2m01qq_bEYs&h=AT3c3VoHrLCpkv9N8Mn85Y2oqNWdHWhxwA2y7SWufd3-MbO1OKIafCfCh5b7naY-60ijqQYS8umIB0x2P5grCxlSLX0T7iqulZr3Tno-4FQeaPRXCPecDFcfhbJ-Y07xUV4Xew) |
+| A gallery of interesting Jupyter Notebooks | 它是一個不斷增加的notebooks列，由nbviewer進行維護，展示了許多具有深度又有廣度的IPython在數值分析上的應用，它應有盡有，從簡短的例子到教程，再到完整的課程與書籍，並且它都是使用notebook格式 | [https://github.com/jupyter/jupyter/wiki/A-gallery-of-interesting-Jupyter-Notebooks](https://l.facebook.com/l.php?u=https%3A%2F%2Fgithub.com%2Fjupyter%2Fjupyter%2Fwiki%2FA-gallery-of-interesting-Jupyter-Notebooks%3Ffbclid%3DIwAR2mkIp3Xi-3ZAGo6KE_y55UxJqzW_dw1jX2oAnaQOsslT52elyBSnB0pNk&h=AT3c3VoHrLCpkv9N8Mn85Y2oqNWdHWhxwA2y7SWufd3-MbO1OKIafCfCh5b7naY-60ijqQYS8umIB0x2P5grCxlSLX0T7iqulZr3Tno-4FQeaPRXCPecDFcfhbJ-Y07xUV4Xew) |
+| Video Tutorials                            | 可以在網路上找到很多關於IPython的教學影片，作者這邊特別推薦PyCon, SciPy和PyData 學術會議上Fernando Perez 和 Brain Granger 的教程，他們是IPython和Jupyter的主要創始人與維護者 |                                                              |
+
+
+
+
+
+### 2. 相關書籍 
+
+| 書籍                                                         | 說明                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Python for Data Analysis                                     | 作者為Wes Mckinney，其中一章節描述如何使用IPython來當數據科學家，也就是IPython如何應用於數據科學 |
+| Learning IPython for interactive Computing and Data Visualization： | 作者為Cyrille Rossant，一本簡短的書籍，提供IPython應用於數據上很好的介紹 |
+| IPython Interactive Computing and Visualization Cookbook     | 作者為Cyrille Rossant，一本詳盡的書籍，提供IPython應用於數據分析上進階的用法，雖然名為IPython，但實際上內容涵蓋了既有深度與廣度的數據科學議題 |
+
+
+
+
+
